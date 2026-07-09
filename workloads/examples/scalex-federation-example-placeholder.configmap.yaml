@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scalex-federation-example-placeholder
+  namespace: scalex-federation-examples
+  labels:
+    app.kubernetes.io/name: scalex-federation-example-placeholder
+    app.kubernetes.io/part-of: scalex-federation
+    scalex.io/federation-example: placeholder
+data:
+  README: |
+    This ConfigMap is a harmless example placeholder for scalex-fed policy
+    examples. It is not a production workload and must not contain credentials,
+    endpoints, or application configuration.

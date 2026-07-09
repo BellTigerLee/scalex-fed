@@ -1,67 +1,114 @@
 # scalex-fed
 
 `scalex-fed`는 ScaleX federation layer 저장소입니다. 여러 ScaleX child
-cluster를 하나의 federation 의도로 묶기 위한 Karmada/GitOps 소스를
-보관합니다.
+cluster를 하나의 federation 의도로 묶기 위한 workload source, Karmada policy,
+Tower-facing GitOps entrypoint를 보관합니다.
 
-이 저장소는 현재 `tower-k8s`에서 자동으로 동작하지 않습니다. `tower-k8s`가
-나중에 Argo CD Application source로 이 저장소의 chart path를 바라볼 수 있도록
-구조를 준비한 상태입니다.
+이 변경은 `scalex-fed` 내부 구조만 준비합니다. `tower-k8s` 자체 설정은 이
+저장소 변경에서 수정하지 않습니다.
 
-## 역할
+## 모델
 
-`scalex-fed`가 소유하는 범위는 federation intent입니다.
+`tower-k8s` Argo CD가 이 저장소의 `apps/federation` chart를 sync합니다.
+`apps/federation`은 직접 workload나 Karmada policy를 render하지 않는 얇은
+app-of-apps entrypoint입니다. Helm chart는 chart root 밖의 파일을 include할 수
+없으므로, top-level `workloads/`나 `policies/` 파일을 직접 template처럼 다루지
+않습니다.
 
-- Karmada `ClusterPropagationPolicy` 및 `ClusterOverridePolicy`
-- 여러 child cluster에 공통으로 적용할 multi-cluster app grouping
-- `b-k8s`, `c-k8s` 같은 member cluster를 대상으로 하는 placement/override rule
-- 향후 공통 앱을 어떤 cluster group에 전파할지에 대한 GitOps 선언
+대신 `apps/federation`은 명시적으로 enable된 경우에만 child Argo CD
+Application을 만들 수 있습니다.
 
-`scalex-fed`는 child cluster 자체의 preset이나 control-plane bootstrap을
-소유하지 않습니다.
+- `workloads.enabled: true`이면 child Application이 `workloads/examples`를 source로 가리킵니다.
+- `policies.enabled: true`이면 child Application이 `policies/examples`를 source로 가리킵니다.
+- 기본값은 둘 다 `false`입니다. 따라서 기본 render는 child Application을 만들지 않습니다.
+
+`policies/`의 Karmada policy는 tower control plane에 적용되어
+`workloads/`의 resource를 selector로 고르고, 선택된 workload를 Karmada member
+cluster `b` 및 `c` 같은 대상 cluster로 전파합니다.
 
 ## 저장소 경계
 
 | 저장소 | 역할 |
 | --- | --- |
-| `scalex-fed` | ScaleX federation intent, Karmada policy, shared multi-cluster grouping |
+| `scalex-fed` | ScaleX federation workload examples, Karmada policy examples/templates, Tower-facing federation entrypoint |
 | `b-k8s` | `b` child cluster preset |
 | `c-k8s` | `c` child cluster preset |
 | `eecs-k8s` | 공통 base/framework repo |
-| `tower-k8s` | Argo CD/Karmada control-plane cluster preset. 향후 이 저장소의 chart path를 Argo Application source로 참조 |
+| `tower-k8s` | Argo CD/Karmada control-plane cluster preset. 이 저장소의 `apps/federation` path를 Argo Application source로 참조할 수 있음 |
+
+`scalex-fed`는 child cluster 자체의 preset이나 control-plane bootstrap을
+소유하지 않습니다.
 
 ## 현재 구성
 
 ```text
+README.md
 apps/
-`-- scalex-federation/
+`-- federation/
     |-- Chart.yaml
     |-- README.md
     |-- values.yaml
-    |-- examples/
     `-- templates/
+        `-- applications.yaml
+workloads/
+|-- README.md
+`-- examples/
+    |-- README.md
+    |-- namespace.yaml
+    `-- scalex-federation-example-placeholder.configmap.yaml
+policies/
+|-- README.md
+|-- examples/
+|   |-- cluster-override-policy.child-baremetal.example.yaml
+|   `-- cluster-propagation-policy.child-baremetal.example.yaml
+`-- templates/
+    `-- cluster-policies.example.helm.yaml
 ```
 
-`apps/scalex-federation` chart는 `tower-k8s`의 future Argo Application에서
-`source.path: apps/scalex-federation`로 가리킬 수 있도록 준비한 최소 Helm
-application chart입니다.
+## 역할별 디렉터리
+
+### `workloads/`
+
+Karmada policy가 선택하고 전파할 source workload resource를 둡니다. 현재는
+production app이 아니라 `scalex-federation-example-placeholder` ConfigMap만
+있습니다. 이 placeholder는 policy selector 검증을 위한 안전한 예시이며 실제
+서비스, secret, kubeconfig, bearer token, credential을 포함하지 않습니다.
+
+### `policies/`
+
+Karmada `ClusterPropagationPolicy` 및 `ClusterOverridePolicy` 예시와 template
+source를 둡니다. 예시는 기존 Karmada member label인
+`scalex.io/role=child`, `scalex.io/topology=baremetal`, `scalex.io/site=b|c`를
+사용합니다.
+
+### `apps/`
+
+`tower-k8s`가 Argo CD Application source로 바라볼 Helm entrypoint를 둡니다.
+`apps/federation` chart는 policy dumping ground가 아니며, top-level source
+paths로 향하는 child Application만 조건부로 생성합니다.
 
 ## 안전 기본값
 
-기본값으로 example policy rendering은 꺼져 있습니다.
+`apps/federation/values.yaml`의 기본값은 아무 child Application도 생성하지
+않습니다.
 
 ```yaml
-examplePolicies:
+workloads:
+  enabled: false
+policies:
   enabled: false
 ```
 
-따라서 chart를 그대로 render해도 Karmada policy 리소스가 생성되지 않습니다.
-예시는 기존 Karmada member label인 `scalex.io/role=child`,
-`scalex.io/topology=baremetal`, `scalex.io/site=b|c`를 문서화하지만, 실제
-적용은 명시적으로 enable해야 합니다.
+child Application sync automation도 기본적으로 꺼져 있고, automation을 켜더라도
+`prune` 기본값은 `false`입니다.
 
-실제 workload, secret, kubeconfig, bearer token, credential은 이 저장소에
-두지 않습니다.
+```yaml
+syncPolicy:
+  automated:
+    enabled: false
+    prune: false
+    selfHeal: false
+```
 
 ## tower-k8s에서 필요한 설정
 
@@ -78,44 +125,15 @@ private repository이면 Tower Argo CD에 repository credential을 등록해야 
 
 ```yaml
 repoURL: https://github.com/BellTigerLee/scalex-fed.git
-path: apps/scalex-federation
+path: apps/federation
 targetRevision: main
 ```
 
-### 2. Argo CD가 Karmada API를 destination으로 알게 하기
-
-Karmada policy 리소스는 Tower host cluster가 아니라 Karmada API server에
-적용되어야 합니다. 따라서 Tower Argo CD에 Karmada API를 cluster destination으로
-등록해야 합니다.
-
-권장 destination 이름은 다음처럼 둡니다.
-
-```yaml
-destination:
-  name: karmada
-```
-
-이 이름은 예시일 뿐이며, 실제 Argo CD cluster secret의 이름과 맞아야 합니다.
-Karmada API가 Argo CD cluster로 등록되어 있지 않으면 `scalex-fed` Application은
-정상 sync되지 않습니다.
-
-### 3. AppProject 허용 범위 확인
-
-`tower-k8s`의 Application이 `project: tower-ops`를 사용한다면, 해당 AppProject가
-다음을 허용해야 합니다.
-
-- source repo: `https://github.com/BellTigerLee/scalex-fed.git`
-- destination cluster: Karmada API destination 이름
-- Karmada policy resource: `policy.karmada.io/*`
-
-AppProject가 source/destination/resource를 제한하지 않는다면 별도 변경이 필요
-없을 수 있습니다.
-
-### 4. tower-k8s/apps/values.yaml에 Application 추가
+### 2. Tower Argo CD Application 추가
 
 `tower-k8s`는 `apps/values.yaml`의 `apps:` 목록을 읽어 Argo CD Application을
-생성합니다. Karmada 설치가 sync wave 20, member join이 sync wave 30이므로
-federation policy app은 그 뒤인 sync wave 40 정도가 적절합니다.
+생성합니다. Karmada 설치가 sync wave 20, member join이 sync wave 30이라면
+federation entrypoint app은 그 뒤인 sync wave 40 정도가 적절합니다.
 
 초기 연결 검증용 예시는 다음과 같습니다.
 
@@ -124,18 +142,20 @@ apps:
   scalex-federation:
     enabled: true
     name: tower-scalex-federation
-    namespace: scalex-federation-system
+    namespace: argo
     project: tower-ops
     destination:
-      name: karmada
+      name: tower
     source:
       repoURL: https://github.com/BellTigerLee/scalex-fed.git
-      path: apps/scalex-federation
+      path: apps/federation
       targetRevision: main
       releaseName: scalex-federation
       helm:
         valuesObject:
-          examplePolicies:
+          workloads:
+            enabled: false
+          policies:
             enabled: false
     annotations:
       argocd.argoproj.io/sync-wave: "40"
@@ -151,22 +171,24 @@ apps:
         - SkipDryRunOnMissingResource=true
 ```
 
-처음에는 `examplePolicies.enabled: false`로 연결만 확인합니다. 이 상태에서는
-chart가 policy 리소스를 만들지 않으므로 안전합니다.
+처음에는 `workloads.enabled: false` 및 `policies.enabled: false`로 연결만
+확인합니다. 이 상태에서는 `apps/federation` chart가 child Application을 만들지
+않으므로 안전합니다.
 
-## 실제 policy를 켜기 전에 필요한 것
+## 예시를 켜기 전에 필요한 것
 
-지금 chart의 policy는 placeholder `ConfigMap`만 선택합니다. 실제 공통 앱을
-`b`, `c` cluster에 전파하려면 다음을 먼저 정해야 합니다.
+현재 policy 예시는 placeholder `ConfigMap`만 선택합니다. 실제 공통 앱을 `b`,
+`c` cluster에 전파하려면 다음을 먼저 정해야 합니다.
 
-1. `scalex-fed`가 보관할 공통 앱 manifest 또는 chart 위치
+1. `scalex-fed`가 보관할 공통 app manifest 또는 chart 위치
 2. Karmada가 선택할 resource label/name/namespace
 3. `b`, `c`에 동일하게 보낼지, cluster별 override가 필요한지
 4. `ClusterPropagationPolicy`를 쓸지, namespace-scoped `PropagationPolicy`를 쓸지
 5. `ClusterOverridePolicy`가 필요한 경우 어떤 field/image/annotation을 바꿀지
 
-그 다음에 `values.yaml`의 selector를 실제 resource에 맞게 바꾸고
-`examplePolicies.enabled: true` 또는 별도 production policy 값을 추가합니다.
+그 다음에 `workloads/examples` 및 `policies/examples`를 참고해 production용
+source와 policy를 별도 path에 추가하고, `apps/federation` child Application을
+명시적으로 enable합니다.
 
 ## 현재 member cluster label
 
@@ -185,5 +207,5 @@ scalex.io/topology: baremetal
 scalex.io/site: c
 ```
 
-`apps/scalex-federation`의 기본 selector는 이 label을 기준으로 `b`, `c`를
-대상 cluster 후보로 잡습니다.
+`policies/examples`의 기본 selector는 이 label을 기준으로 `b`, `c`를 대상
+cluster 후보로 잡습니다.

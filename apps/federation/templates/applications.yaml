@@ -1,0 +1,44 @@
+{{- $root := . -}}
+{{- $syncOptions := default (list) .Values.syncPolicy.syncOptions -}}
+{{- range $child := list (dict "key" "workloads" "values" .Values.workloads) (dict "key" "policies" "values" .Values.policies) }}
+{{- if $child.values.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $child.values.name | quote }}
+  namespace: {{ $root.Values.argo.namespace | quote }}
+{{ with $child.values.syncWave }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ . | quote }}
+{{ end }}
+  labels:
+    app.kubernetes.io/part-of: scalex-federation
+    scalex.io/federation-role: {{ $child.key | quote }}
+spec:
+  project: {{ $root.Values.project | quote }}
+  source:
+    repoURL: {{ $root.Values.source.repoURL | quote }}
+    targetRevision: {{ $root.Values.source.targetRevision | quote }}
+    path: {{ $child.values.path | quote }}
+  destination:
+    name: {{ $root.Values.destination.name | quote }}
+{{ with $child.values.namespace }}
+    namespace: {{ . | quote }}
+{{ end }}
+{{ if or $root.Values.syncPolicy.automated.enabled $syncOptions }}
+  syncPolicy:
+{{ if $root.Values.syncPolicy.automated.enabled }}
+    automated:
+      prune: {{ default false $root.Values.syncPolicy.automated.prune }}
+      selfHeal: {{ default false $root.Values.syncPolicy.automated.selfHeal }}
+{{ end }}
+{{ if $syncOptions }}
+    syncOptions:
+{{- range $option := $syncOptions }}
+      - {{ $option | quote }}
+{{- end }}
+{{ end }}
+{{ end }}
+{{- end }}
+{{- end }}

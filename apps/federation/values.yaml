@@ -1,0 +1,36 @@
+source:
+  repoURL: https://github.com/BellTigerLee/scalex-fed.git
+  targetRevision: main
+
+argo:
+  namespace: argo
+
+project: tower-ops
+
+destination:
+  name: tower
+
+syncPolicy:
+  automated:
+    enabled: false
+    prune: false
+    selfHeal: false
+  syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+    - RespectIgnoreDifferences=true
+    - SkipDryRunOnMissingResource=true
+
+workloads:
+  enabled: false
+  name: scalex-fed-workloads-examples
+  namespace: scalex-federation-examples
+  path: workloads/examples
+  syncWave: "10"
+
+policies:
+  enabled: false
+  name: scalex-fed-policies-examples
+  namespace: ""
+  path: policies/examples
+  syncWave: "20"
