@@ -1,0 +1,7 @@
+target:
+  name: c
+  sites:
+    - c
+
+config:
+  message: c-only example

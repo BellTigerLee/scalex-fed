@@ -1,0 +1,6 @@
+apiVersion: v2
+name: scalex-project-template
+description: Safe example Helm chart for a scalex-fed project deployment unit.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

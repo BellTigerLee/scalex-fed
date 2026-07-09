@@ -1,0 +1,7 @@
+target:
+  name: b
+  sites:
+    - b
+
+config:
+  message: b-only example

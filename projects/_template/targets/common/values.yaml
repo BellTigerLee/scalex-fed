@@ -1,0 +1,8 @@
+target:
+  name: common
+  sites:
+    - b
+    - c
+
+config:
+  message: common example rendered for b and c

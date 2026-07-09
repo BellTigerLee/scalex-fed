@@ -1,0 +1,8 @@
+project:
+  name: scalex-project-template
+
+target:
+  name: common
+
+config:
+  message: example only

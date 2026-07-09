@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-%s" .Values.project.name .Values.target.name | quote }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.project.name | quote }}
+    app.kubernetes.io/part-of: scalex-fed
+    scalex.io/project: {{ .Values.project.name | quote }}
+    scalex.io/target: {{ .Values.target.name | quote }}
+data:
+  message: {{ .Values.config.message | quote }}
+  note: "example template; replace before production use"

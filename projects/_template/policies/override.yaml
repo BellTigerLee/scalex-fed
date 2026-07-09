@@ -1,13 +1,14 @@
 apiVersion: policy.karmada.io/v1alpha1
-kind: ClusterOverridePolicy
+kind: OverridePolicy
 metadata:
-  name: scalex-child-baremetal-example
+  name: scalex-project-template-target-annotations
 spec:
   resourceSelectors:
     - apiVersion: v1
       kind: ConfigMap
-      namespace: scalex-federation-examples
-      name: scalex-federation-example-placeholder
+      labelSelector:
+        matchLabels:
+          scalex.io/project: scalex-project-template
   overrideRules:
     - targetCluster:
         labelSelector:
@@ -27,6 +28,6 @@ spec:
                 - c
       overriders:
         plaintext:
-          - path: /metadata/annotations/scalex.io~1federation-example
+          - path: /metadata/annotations/scalex.io~1federation-managed
             operator: add
-            value: disabled-by-default
+            value: "true"

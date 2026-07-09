@@ -1,0 +1,87 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: scalex-project-template-common
+spec:
+  resourceSelectors:
+    - apiVersion: v1
+      kind: ConfigMap
+      labelSelector:
+        matchLabels:
+          scalex.io/project: scalex-project-template
+          scalex.io/target: common
+  placement:
+    clusterAffinity:
+      labelSelector:
+        matchExpressions:
+          - key: scalex.io/role
+            operator: In
+            values:
+              - child
+          - key: scalex.io/topology
+            operator: In
+            values:
+              - baremetal
+          - key: scalex.io/site
+            operator: In
+            values:
+              - b
+              - c
+---
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: scalex-project-template-b
+spec:
+  resourceSelectors:
+    - apiVersion: v1
+      kind: ConfigMap
+      labelSelector:
+        matchLabels:
+          scalex.io/project: scalex-project-template
+          scalex.io/target: b
+  placement:
+    clusterAffinity:
+      labelSelector:
+        matchExpressions:
+          - key: scalex.io/role
+            operator: In
+            values:
+              - child
+          - key: scalex.io/topology
+            operator: In
+            values:
+              - baremetal
+          - key: scalex.io/site
+            operator: In
+            values:
+              - b
+---
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: scalex-project-template-c
+spec:
+  resourceSelectors:
+    - apiVersion: v1
+      kind: ConfigMap
+      labelSelector:
+        matchLabels:
+          scalex.io/project: scalex-project-template
+          scalex.io/target: c
+  placement:
+    clusterAffinity:
+      labelSelector:
+        matchExpressions:
+          - key: scalex.io/role
+            operator: In
+            values:
+              - child
+          - key: scalex.io/topology
+            operator: In
+            values:
+              - baremetal
+          - key: scalex.io/site
+            operator: In
+            values:
+              - c
