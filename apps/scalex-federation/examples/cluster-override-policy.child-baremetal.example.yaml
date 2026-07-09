@@ -1,0 +1,32 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: ClusterOverridePolicy
+metadata:
+  name: scalex-child-baremetal-example
+spec:
+  resourceSelectors:
+    - apiVersion: v1
+      kind: ConfigMap
+      namespace: scalex-federation-examples
+      name: scalex-federation-example-placeholder
+  overrideRules:
+    - targetCluster:
+        labelSelector:
+          matchExpressions:
+            - key: scalex.io/role
+              operator: In
+              values:
+                - child
+            - key: scalex.io/topology
+              operator: In
+              values:
+                - baremetal
+            - key: scalex.io/site
+              operator: In
+              values:
+                - b
+                - c
+      overriders:
+        plaintext:
+          - path: /metadata/annotations/scalex.io~1federation-example
+            operator: add
+            value: disabled-by-default

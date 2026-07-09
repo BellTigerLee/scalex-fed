@@ -1,0 +1,66 @@
+{{- if .Values.examplePolicies.enabled }}
+{{- $sites := default (list) .Values.memberSelector.sites }}
+---
+apiVersion: policy.karmada.io/v1alpha1
+kind: ClusterPropagationPolicy
+metadata:
+  name: {{ .Values.examples.propagation.name | quote }}
+spec:
+  resourceSelectors:
+    - apiVersion: {{ .Values.examples.propagation.resourceSelector.apiVersion | quote }}
+      kind: {{ .Values.examples.propagation.resourceSelector.kind | quote }}
+      namespace: {{ .Values.examples.propagation.resourceSelector.namespace | quote }}
+      name: {{ .Values.examples.propagation.resourceSelector.name | quote }}
+  placement:
+    clusterAffinity:
+      labelSelector:
+        matchExpressions:
+          - key: scalex.io/role
+            operator: In
+            values:
+              - {{ .Values.memberSelector.role | quote }}
+          - key: scalex.io/topology
+            operator: In
+            values:
+              - {{ .Values.memberSelector.topology | quote }}
+          - key: scalex.io/site
+            operator: In
+            values:
+{{- range $sites }}
+              - {{ . | quote }}
+{{- end }}
+---
+apiVersion: policy.karmada.io/v1alpha1
+kind: ClusterOverridePolicy
+metadata:
+  name: {{ .Values.examples.override.name | quote }}
+spec:
+  resourceSelectors:
+    - apiVersion: {{ .Values.examples.override.resourceSelector.apiVersion | quote }}
+      kind: {{ .Values.examples.override.resourceSelector.kind | quote }}
+      namespace: {{ .Values.examples.override.resourceSelector.namespace | quote }}
+      name: {{ .Values.examples.override.resourceSelector.name | quote }}
+  overrideRules:
+    - targetCluster:
+        labelSelector:
+          matchExpressions:
+            - key: scalex.io/role
+              operator: In
+              values:
+                - {{ .Values.memberSelector.role | quote }}
+            - key: scalex.io/topology
+              operator: In
+              values:
+                - {{ .Values.memberSelector.topology | quote }}
+            - key: scalex.io/site
+              operator: In
+              values:
+{{- range $sites }}
+                - {{ . | quote }}
+{{- end }}
+      overriders:
+        plaintext:
+          - path: /metadata/annotations/{{ .Values.examples.override.annotationKey | replace "~" "~0" | replace "/" "~1" }}
+            operator: add
+            value: {{ .Values.examples.override.annotationValue | quote }}
+{{- end }}
